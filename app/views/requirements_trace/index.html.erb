@@ -1,0 +1,63 @@
+<!-- ### File: plugins/redmine_requirements_trace/app/views/requirements_trace/index.html.erb -->
+
+<h2>요구사항 추적표</h2>
+
+<%= form_with url: project_requirements_trace_index_path(@project), method: :get, local: true do %>
+  <label for="status_filter">이슈 상태 필터:</label>
+  <select name="status_filter" id="status_filter" onchange="this.form.submit()">
+    <option value="">-- 모든 상태 --</option>
+    <% IssueStatus.all.each do |status| %>
+      <option value="<%= status.id %>" <%= 'selected' if params[:status_filter].to_i == status.id %>><%= status.name %></option>
+    <% end %>
+  </select>
+<% end %>
+
+<p>
+  <%= link_to 'CSV 다운로드', export_project_requirements_trace_index_path(@project), class: 'icon icon-export' %>
+</p>
+
+<table class="list">
+  <thead>
+    <tr>
+      <th>요구사항</th>
+      <th>USECASE</th>
+      <th>화면설계</th>
+      <th>프로그램설계</th>
+      <th>단위테스트</th>
+      <th>통합테스트</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @trace_matrix.each do |req_id, trace| %>
+      <% next if params[:status_filter].present? && trace[:requirement].status_id != params[:status_filter].to_i %>
+      <tr>
+        <% req_id_value = trace[:requirement].custom_field_values.find { |cf| cf.custom_field.name == '요구사항ID' }&.value %>
+        <td><%= link_to (req_id_value.present? ? "#{req_id_value} : #{trace[:requirement].subject}" : trace[:requirement].subject), issue_path(trace[:requirement]) %></td>
+        <% [
+              [:usecases, 'USECASE ID'],
+              [:screen_designs, '화면ID'],
+              [:program_designs, nil],
+              [:unit_tests, '단위테스트케이스 ID'],
+              [:integration_tests, '통합테스트ID']
+          ].each do |key, field_name| %>
+          <td>
+            <% if trace[key].any? %>
+              <% trace[key].each do |issue| %>
+                <div>
+                  <% if field_name %>
+                    <% id_value = issue.custom_field_values.find { |cf| cf.custom_field.name == field_name }&.value %>
+                    <%= link_to (id_value.present? ? "#{id_value} : #{issue.subject}" : issue.subject), issue_path(issue) %> (<%= issue.status.name %>)
+                  <% else %>
+                    <%= link_to issue.subject, issue_path(issue) %> (<%= issue.status.name %>)
+                  <% end %>
+                </div>
+              <% end %>
+            <% else %>
+              <span>미작성</span>
+            <% end %>
+          </td>
+        <% end %>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
